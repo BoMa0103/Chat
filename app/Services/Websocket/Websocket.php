@@ -3,6 +3,8 @@
 namespace App\Services\Websocket;
 
 use Exception;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Request;
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
 use SplObjectStorage;
@@ -21,16 +23,30 @@ class Websocket implements MessageComponentInterface
         // Store the new connection to send messages to later
         $this->clients->attach($conn);
 
+        $message = [
+            'message' => 'online',
+            'value' => $this->clients->count(),
+        ];
+
+        foreach ($this->clients as $client) {
+            $client->send(json_encode($message));
+        }
+
         echo "New connection! ({$conn->resourceId})\n";
     }
 
     public function onMessage(ConnectionInterface $from, $msg)
     {
-        echo $msg;
-        foreach ($this->clients as $client) {
-            if ($from !== $client) {
-                // The sender is not the receiver, send to each client connected
-                $client->send($msg);
+        $msg = json_decode($msg);
+
+        if($msg->message == 'new message') {
+            $message = [
+                'message' => 'message',
+                'value' => $msg->value,
+                'user' => $msg->user,
+                ];
+            foreach ($this->clients as $client) {
+                $client->send(json_encode($message));
             }
         }
     }
@@ -39,6 +55,15 @@ class Websocket implements MessageComponentInterface
     {
         // The connection is closed, remove it, as we can no longer send it messages
         $this->clients->detach($conn);
+
+        $message = [
+            'message' => 'online',
+            'value' => $this->clients->count(),
+        ];
+
+        foreach ($this->clients as $client) {
+            $client->send(json_encode($message));
+        }
 
         echo "Connection {$conn->resourceId} has disconnected\n";
     }

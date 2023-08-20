@@ -47,17 +47,30 @@
     border-radius: 5px;
 }
 
-.incoming {
-    align-self: flex-start;
-    background-color: #f2f2f2;
+.message_user {
+    display: flex;
+    padding: 4px 12px;
+    color: #0088cc;
     border-radius: 5px;
+    font-weight: bold;
     width: fit-content;
 }
 
+.incoming {
+    display: block;
+    align-self: flex-start;
+    background-color: #f2f2f9;
+    border-radius: 10px 10px 0 10px;
+    width: fit-content;
+    margin-left: auto;
+}
+
 .outgoing {
+    display: block;
     align-self: flex-end;
-    background-color: #0088cc;
-    color: #fff;
+    background-color: #dad5e0;
+    border-radius: 10px 10px 10px 0;
+    width: fit-content;
 }
 
 /* Стили для ввода сообщения */
