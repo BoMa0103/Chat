@@ -9,7 +9,7 @@ Route::get('/', function () {
 
 Route::get('/chat', function () {
     return view('chat', [
-        'name' => \auth()->user()->name,
+        'user_id' => \auth()->user()->id,
     ]);
 })->middleware('auth');
 

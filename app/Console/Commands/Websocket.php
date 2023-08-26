@@ -21,19 +21,19 @@ class Websocket extends Command
      *
      * @var string
      */
-    protected $description = 'Websocket server run command';
+    protected $description = 'WebsocketService server run command';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info('Websocket server run');
+        $this->info('WebsocketService server run');
 
         $server = IoServer::factory(
             new HttpServer(
                 new WsServer(
-                    new \App\Services\Websocket\Websocket()
+                    new \App\Services\Websocket\WebsocketService()
                 )
             ),
             8080

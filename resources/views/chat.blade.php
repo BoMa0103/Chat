@@ -15,9 +15,10 @@
 
         <!-- Scripts -->
         <script type="text/javascript" src="{{ URL::asset('js/websocket.js') }}"></script>
+        <script type="text/javascript" src="{{ URL::asset('js/chat.js') }}"></script>
 
         <script>
-            let userName = "{{$name}}";
+            let user_id = "{{$user_id}}";
         </script>
 
         <style>
@@ -27,20 +28,38 @@
     <body>
 
     <div class="chat-container">
-        <div class="chat">
+        <div class="chat-list">
+            <div class="chat-list-header">
+                Chat list
+            </div>
+            <ul id="chat-list">
+
+            </ul>
+        </div>
+        <div class="chat" id="chat">
             <div class="chat-header">
                 Chat
-                <div class="chat-online" id="online">
-
-                </div>
             </div>
-            <div class="chat-messages" id="message">
+            <div class="chat-messages" id="messages">
 
             </div>
             <div class="chat-input">
                 <textarea placeholder="Type your message..." type="text" id="text"></textarea>
-                <button id="send" onclick="send()">Send</button>
+                <button id="send" onclick="sendMessage()">Send</button>
             </div>
+        </div>
+        <div class="no-chat" id="no-chat">
+            <p>Select a chat to start messaging</p>
+        </div>
+        <div class="online-users">
+            <div class="online-users-header">
+                <div class="chat-online" id="online">
+
+                </div>
+            </div>
+            <ul id="user-list">
+
+            </ul>
         </div>
     </div>
 

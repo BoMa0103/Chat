@@ -1,7 +1,9 @@
-let socket = new WebSocket("ws://localhost:8080");
+const socket = new WebSocket("ws://localhost:8080");
 
 socket.onopen = function (e) {
-    socket.send('{"message": "require_messages_history", "user": "' + userName + '"}');
+    console.log('open');
+    socket.send('{"message": "connection_identify", "user_id": "' + user_id + '"}');
+    socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
     console.log("[open] Connection successful");
 };
 
@@ -9,58 +11,19 @@ socket.onmessage = function (event) {
     let json = JSON.parse(event.data);
 
     if (json.message === 'message') {
-        let messages = document.getElementById('message');
-        let div = document.createElement('div');
-
-
-        if (json.user === userName) {
-            div.className = 'message outgoing';
-
-            div.innerHTML =
-                "<div class=\"message-content\" id=\"message\">" + json.value + "</div>" +
-                "<div class=\"message-time\" id=\"time\">" + json.time + "</div>";
-        } else {
-            div.className = 'message incoming';
-
-            div.innerHTML =
-                "<div class=\"message_user\">" + json.user + "</div>" +
-                "<div class=\"message-content\" id=\"message\">" + json.value + "</div>" +
-                "<div class=\"message-time\" id=\"time\">" + json.time  + "</div>";
-        }
-
-        messages.append(div);
-
-        scrollToBottom();
-    }
-
-    if(json.message === 'load_history') {
-        let messages = document.getElementById('message');
-        let div = document.createElement('div');
-
-        if (json.user === userName) {
-            div.className = 'message outgoing';
-
-            div.innerHTML =
-                "<div class=\"message-content\" id=\"message\">" + json.value + "</div>" +
-                "<div class=\"message-time\" id=\"time\">" + json.time + "</div>";
-        } else {
-            div.className = 'message incoming';
-
-            div.innerHTML =
-                "<div class=\"message_user\">" + json.user + "</div>" +
-                "<div class=\"message-content\" id=\"message\">" + json.value + "</div>" +
-                "<div class=\"message-time\" id=\"time\">" + json.time  + "</div>";
-        }
-
-        messages.prepend(div);
-
-        scrollToBottom();
-    }
-
-    if(json.message === 'online') {
-        let messages = document.getElementById('online');
-
-        messages.innerHTML = "Online " + json.value;
+        showNewMessage(json);
+    } else if (json.message === 'load_history') {
+        showMessagesHistory(json);
+    } else if (json.message === 'online_users_count') {
+        showOnlineUsersCount(json);
+    } else if (json.message === 'online_users_list') {
+        showOnlineUsersList(json);
+    } else if (json.message === 'load_chats') {
+        loadChats(json);
+    } else if (json.message === 'require_select_chat') {
+        requireSelectChat(json);
+    } else if (json.message === 'chat_selected') {
+        chatSelected(json);
     }
 };
 
@@ -75,25 +38,3 @@ socket.onclose = function (event) {
 socket.onerror = function (error) {
     console.log(`[error]`);
 };
-
-function send() {
-    let text = document.getElementById('text').value;
-    socket.send('{"message": "new message", "value": "' + text + '", "user": "' + userName + '", "time": "' + getCurrentTime() + '"}');
-}
-
-function getCurrentTime() {
-    const currentDate = new Date();
-
-    const hours = currentDate.getHours();
-    const minutes = currentDate.getMinutes();
-
-    const formattedHours = hours < 10 ? '0' + hours : hours;
-    const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
-
-    return `${formattedHours}:${formattedMinutes}`;
-}
-
-function scrollToBottom() {
-    let chatMessages = document.getElementById('message');
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
