@@ -8,26 +8,6 @@ function sendMessage() {
     socket.send('{"message": "new_message", "value": "' + text + '", "user_id": "' + user_id + '", "time": "' + getCurrentTime() + '"}');
 }
 
-function getOrCreateNewChat(userId) {
-    socket.send('{"message": "new_chat", "user_id": "' + userId + '"}');
-
-    document.getElementById('messages').innerText = '';
-
-    load_messages_count = 0;
-
-    socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
-}
-
-function selectChat(chatId) {
-    socket.send('{"message": "select_chat", "chat_id": "' + chatId + '"}');
-
-    document.getElementById('messages').innerText = '';
-
-    load_messages_count = 0;
-
-    socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
-}
-
 function showNewMessage(json) {
     let messages = document.getElementById('messages');
 
@@ -52,6 +32,16 @@ function showMessagesHistory(json) {
     } else {
         scrollToCurrentMessage();
     }
+}
+
+function selectChat(chatId) {
+    socket.send('{"message": "select_chat", "chat_id": "' + chatId + '"}');
+
+    document.getElementById('messages').innerText = '';
+
+    load_messages_count = 0;
+
+    socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
 }
 
 function showMessage(json) {
@@ -88,7 +78,7 @@ function showOnlineUsersList(json) {
     json.value.forEach(user => {
         let li = document.createElement('li')
         li.innerHTML = "<p onclick=\"getOrCreateNewChat(" + user.id + ")\">" + user.name + "</p>";
-        if(user.id == user_id) {
+        if (user.id == user_id) {
             li.innerHTML = "<p>" + user.name + " (you)</p>";
         }
         users.append(li);
@@ -135,6 +125,15 @@ function loadChats(json) {
     });
 }
 
+function getOrCreateNewChat(userId) {
+    socket.send('{"message": "new_chat", "user_id": "' + userId + '"}');
+
+    document.getElementById('messages').innerText = '';
+
+    load_messages_count = 0;
+
+    socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
+}
 
 function getCurrentTime() {
     const currentDate = new Date();
@@ -163,8 +162,6 @@ function scrollToCurrentMessage() {
 
 window.addEventListener("DOMContentLoaded", (event) => {
     let chatMessages = document.getElementById('messages');
-    console.log('DOMContentLoaded');
-
 
     chatMessages.addEventListener('scroll', function () {
         const scrollTop = chatMessages.scrollTop;
@@ -173,7 +170,6 @@ window.addEventListener("DOMContentLoaded", (event) => {
 
         if (scrollTop === 0 && load_messages_count !== 0) {
             previousScrollHeight = scrollHeight;
-            console.log('scroll');
             socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
         }
     });
