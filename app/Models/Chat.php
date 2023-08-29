@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * App\Models\Chat
+ * App\Models\Chats
  *
  * @property int $id
  * @property int $user_id_first

@@ -86,6 +86,9 @@ class User extends Authenticatable
 
     public function chats(): HasMany
     {
-        return $this->hasMany(Chat::class);
+        $firstParticipantChats = $this->hasMany(Chat::class, 'user_id_first');
+        $secondParticipantChats = $this->hasMany(Chat::class, 'user_id_second');
+
+        return $firstParticipantChats->union($secondParticipantChats);
     }
 }

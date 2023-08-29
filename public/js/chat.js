@@ -121,6 +121,9 @@ function loadChats(json) {
         }
         li.innerHTML = "<p>" + json.chat_names_list[chat.id] + "</p>";
         li.className = "chat-item";
+        if(json.current_chat_id == chat.id) {
+            li.classList.add('selected');
+        }
         chats.append(li);
     });
 }
