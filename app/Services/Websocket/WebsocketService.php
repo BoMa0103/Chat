@@ -139,9 +139,11 @@ class WebsocketService implements MessageComponentInterface
         $this->sendUsersOnlineList();
     }
 
-    private function loadChats(ConnectionInterface $from)
+    public function loadChats(?ConnectionInterface $from, int $userId)
     {
-        $userId = $this->connectedUsersId [$from->resourceId];
+        if($from){
+            $userId = $this->connectedUsersId [$from->resourceId];
+        }
 
         $chats = $this->getUsersService()->find($userId)->chats()->get();
 
@@ -169,7 +171,9 @@ class WebsocketService implements MessageComponentInterface
             'current_chat_id' => $currentChatId,
         ];
 
-        $from->send(json_encode($message_chats));
+//        $from->send(json_encode($message_chats));
+
+        return $chats_name_list;
     }
 
     private function showRequireSelectChatMessage(ConnectionInterface $from)
@@ -192,7 +196,7 @@ class WebsocketService implements MessageComponentInterface
         }
     }
 
-    private function sendUsersOnlineList()
+    public function sendUsersOnlineList()
     {
         $users = [];
 
@@ -208,6 +212,8 @@ class WebsocketService implements MessageComponentInterface
         foreach ($this->clients as $client) {
             $client->send(json_encode($message_users));
         }
+
+        return $users;
     }
 
     private function tryToCreateNewChatOrSelectExistent(ConnectionInterface $from, $msg)
