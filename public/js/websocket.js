@@ -12,14 +12,16 @@ socket.onmessage = function (event) {
 
     if (json.message === 'message') {
         showNewMessage(json);
+    } else if (json.message === 'change_last_message') {
+        changeLastMessage(json);
     } else if (json.message === 'load_history') {
         showMessagesHistory(json);
     } else if (json.message === 'online_users_count') {
-        // showOnlineUsersCount(json);
+        showOnlineUsersCount(json);
     } else if (json.message === 'online_users_list') {
-        // showOnlineUsersList(json);
+        showOnlineUsersList(json);
     } else if (json.message === 'load_chats') {
-        // loadChats(json);
+        loadChats(json);
     } else if (json.message === 'require_select_chat') {
         requireSelectChat(json);
     } else if (json.message === 'chat_selected') {

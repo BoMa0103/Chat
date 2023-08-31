@@ -5,7 +5,12 @@ let previousScrollHeight = 0;
 function sendMessage() {
     let text = document.getElementById('text').value;
     document.getElementById('text').value = '';
-    socket.send('{"message": "new_message", "value": "' + text + '", "user_id": "' + user_id + '", "time": "' + getCurrentTime() + '"}');
+    socket.send('{"message": "new_message", "value": "' + text + '", "time": "' + getCurrentTime() + '"}');
+    document.getElementById('send').setAttribute('disabled', 'disabled');
+}
+
+function changeLastMessage(json) {
+    document.getElementsByClassName('selected')[0].getElementsByClassName('chat-last-message')[0].innerText = json.value;
 }
 
 function showNewMessage(json) {
@@ -91,7 +96,8 @@ function requireSelectChat(json) {
 
     chat.setAttribute('hidden', 'true');
     noChat.removeAttribute('hidden');
-    noChat.style.display = 'block';
+    noChat.style.display = 'flex';
+    chat.style.display = 'none';
 }
 
 function chatSelected(json) {
@@ -101,6 +107,7 @@ function chatSelected(json) {
     noChat.setAttribute('hidden', 'true');
     noChat.style.display = 'none';
     chat.removeAttribute('hidden');
+    chat.style.display = 'flex';
 }
 
 function loadChats(json) {
@@ -108,7 +115,10 @@ function loadChats(json) {
 
     chats.innerText = '';
 
+    let chatOrder = 0;
+
     json.value.forEach(chat => {
+        chatOrder = chatOrder + 1;
         let li = document.createElement('li');
         li.onclick = function () {
             chats.querySelectorAll('.chat-item').forEach((item) => {
@@ -116,13 +126,40 @@ function loadChats(json) {
             });
 
             li.classList.add('selected');
+            if (li.classList.contains('firstChat')) {
+                document.getElementsByClassName('concave-left')[0].style.display = 'none';
+                document.getElementById('messages').style.borderTopLeftRadius = '0';
+            } else {
+                document.getElementsByClassName('concave-left')[0].style.display = 'flex';
+            }
 
             selectChat(chat.id);
         }
-        li.innerHTML = "<p>" + json.chat_names_list[chat.id] + "</p>";
+        li.innerHTML = "<a> " +
+            "<img class=\"w-7 h-7 mr-6 rounded-full\" src=\"/images/alexander-hipp-iEEBWgY_6lA-unsplash.jpg\" alt=\"User image\">" +
+            "<div><p class=\"chat-name\">" + json.chat_names_list[chat.id] + "</p>" +
+            "<p class=\"chat-last-message\" id=\"chat-last-message\">" + json.chats_last_message_list[chat.id] + "</p></div>" +
+            "</a>";
+
         li.className = "chat-item";
-        if(json.current_chat_id == chat.id) {
+
+        if (chatOrder === 1) {
+            li.classList.add('firstChat');
+        } else if (chatOrder === 2) {
+            li.classList.add('secondChat');
+        } else {
+            li.classList.add('nChat');
+        }
+
+        if (json.current_chat_id == chat.id) {
             li.classList.add('selected');
+
+            if (li.classList.contains('firstChat')) {
+                document.getElementsByClassName('concave-left')[0].style.display = 'none';
+                document.getElementById('messages').style.borderTopLeftRadius = '0';
+            } else {
+                document.getElementsByClassName('concave-left')[0].style.display = 'flex';
+            }
         }
         chats.append(li);
     });
@@ -165,6 +202,8 @@ function scrollToCurrentMessage() {
 
 window.addEventListener("DOMContentLoaded", (event) => {
     let chatMessages = document.getElementById('messages');
+    let textArea = document.getElementById('text');
+    let sendButton = document.getElementById('send');
 
     chatMessages.addEventListener('scroll', function () {
         const scrollTop = chatMessages.scrollTop;
@@ -176,4 +215,16 @@ window.addEventListener("DOMContentLoaded", (event) => {
             socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
         }
     });
+
+    // Add an event listener to the textarea to check its value and enable/disable the send button accordingly
+    textArea.addEventListener('input', function () {
+        if (textArea.value.trim() !== '') {
+            sendButton.removeAttribute('disabled');
+        } else {
+            sendButton.setAttribute('disabled', 'disabled');
+        }
+    });
 });
+
+
+

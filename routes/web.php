@@ -7,10 +7,6 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/test', function () {
-    return view('livewire/chat');
-})->middleware('auth');
-
 Route::get('/chat', function () {
     return view('chat', [
         'user_id' => \auth()->user()->id,
