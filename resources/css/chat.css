@@ -199,15 +199,15 @@ textarea {
         right: 0;
         width: 100px;
         height: 100px;
-        z-index: -2;
     }
 
     *::before {
-        top: -100px; /* Відступ зверху */
+        top: -100px;
+        z-index: -1;
     }
 
     *::after {
-        bottom: -100px; /* Відступ зверху */
+        bottom: -100px;
     }
 
     &::before,
@@ -216,13 +216,13 @@ textarea {
         position: absolute;
         right: 0;
         background-color: #2d3748;
-        height: 50px; /* Висота "трамплина" */
-        width: 50px; /* Ширина "трамплина" */
-        z-index: -3; /* Підсунути під фон */
+        height: 50px;
+        width: 50px;
+        z-index: -3;
     }
 
     &::before {
-        top: -50px; /* Відступ зверху */
+        top: -50px;
     }
 
     &::after {
@@ -249,21 +249,6 @@ textarea {
     }
 
     *::before,*::after {
-        z-index: -2;
-    }
-}
-
-.chat-item.selected.secondChat  {
-    z-index: -1;
-
-    *::before {
-        content: '';
-        position: absolute;
-        background-color: hsl(var(--b1) / var(--tw-bg-opacity, 1));
-        border-radius: 25%;
-        right: 0;
-        width: 100px;
-        height: 100px;
         z-index: -2;
     }
 }

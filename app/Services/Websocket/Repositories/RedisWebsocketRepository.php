@@ -6,27 +6,17 @@ use Illuminate\Support\Facades\Redis;
 
 class RedisWebsocketRepository implements WebsocketRepository
 {
-    const CHAT_ONLINE_KEY = 'chat-online';
+    const CHAT_ID_KEY = 'chat-id-';
 
     public function findChatIdByUserId(int $userId): ?int
     {
-        return $this->get($userId);
-    }
-
-    public function getOnline(): int
-    {
-        return $this->get(self::CHAT_ONLINE_KEY);
+        return $this->get(self::CHAT_ID_KEY . $userId);
     }
 
     public function storeChatIdForUser(int $userId, int $chatId): int
     {
-        $this->set($userId, $chatId);
+        $this->set(self::CHAT_ID_KEY . $userId, $chatId);
         return $chatId;
-    }
-
-    public function storeOnline(int $online): int
-    {
-        $this->set(self::CHAT_ONLINE_KEY, $online);
     }
 
     private function get(string $key): ?int

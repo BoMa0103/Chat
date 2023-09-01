@@ -22,10 +22,10 @@
     <div class="chat" id="chat">
         <div class="chat-header">
             Chat
-            <div class="concave-left">
+            <div class="concave-left" id="concave-left">
                 <div class='leftconcave'></div>
             </div>
-            <div class="concave-right">
+            <div class="concave-right" id="concave-right">
                 <div class='rightconcave'></div>
             </div>
         </div>

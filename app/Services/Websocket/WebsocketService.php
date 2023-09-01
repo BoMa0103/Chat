@@ -87,13 +87,6 @@ class WebsocketService implements MessageComponentInterface
         return app(MessagesService::class);
     }
 
-    private function messageValidate($msg)
-    {
-        $msg = preg_replace("/[\r\n]+/", "<br>", $msg);
-
-        return json_decode($msg);
-    }
-
     private function newMessage(ConnectionInterface $from, $msg)
     {
         $userId = $this->connectedUsersId [$from->resourceId];
@@ -135,6 +128,13 @@ class WebsocketService implements MessageComponentInterface
             'user_id' => $userId,
             'chat_id' => $chatId,
         ]);
+    }
+
+    private function messageValidate($msg)
+    {
+        $msg = preg_replace("/[\r\n]+/", "<br>", $msg);
+
+        return json_decode($msg);
     }
 
     private function requireMessagesHistory(ConnectionInterface $from, $msg)

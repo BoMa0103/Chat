@@ -3,14 +3,16 @@ let load_messages_count = 0;
 let previousScrollHeight = 0;
 
 function sendMessage() {
-    let text = document.getElementById('text').value;
-    document.getElementById('text').value = '';
-    socket.send('{"message": "new_message", "value": "' + text + '", "time": "' + getCurrentTime() + '"}');
+    let text = document.getElementById('text');
+    socket.send('{"message": "new_message", "value": "' + text.value + '", "time": "' + getCurrentTime() + '"}');
+    text.value = '';
+
     document.getElementById('send').setAttribute('disabled', 'disabled');
 }
 
 function changeLastMessage(json) {
-    document.getElementsByClassName('selected')[0].getElementsByClassName('chat-last-message')[0].innerText = json.value;
+    let selectedItem = document.getElementsByClassName('selected')[0];
+    selectedItem.getElementsByClassName('chat-last-message')[0].innerText = json.value;
 }
 
 function showNewMessage(json) {
@@ -52,7 +54,7 @@ function selectChat(chatId) {
 function showMessage(json) {
     let div = document.createElement('div');
 
-    if (json.user.id == user_id) {
+    if (json.user.id === parseInt(user_id)) {
         div.className = 'message outgoing';
 
         div.innerHTML =
@@ -83,7 +85,8 @@ function showOnlineUsersList(json) {
     json.value.forEach(user => {
         let li = document.createElement('li')
         li.innerHTML = "<p onclick=\"getOrCreateNewChat(" + user.id + ")\">" + user.name + "</p>";
-        if (user.id == user_id) {
+
+        if (user.id === parseInt(user_id)) {
             li.innerHTML = "<p>" + user.name + " (you)</p>";
         }
         users.append(li);
@@ -118,51 +121,54 @@ function loadChats(json) {
     let chatOrder = 0;
 
     json.value.forEach(chat => {
-        chatOrder = chatOrder + 1;
         let li = document.createElement('li');
+
+        chatOrder = chatOrder + 1;
+
         li.onclick = function () {
+
             chats.querySelectorAll('.chat-item').forEach((item) => {
                 item.classList.remove('selected');
             });
 
-            li.classList.add('selected');
-            if (li.classList.contains('firstChat')) {
-                document.getElementsByClassName('concave-left')[0].style.display = 'none';
-                document.getElementById('messages').style.borderTopLeftRadius = '0';
-            } else {
-                document.getElementsByClassName('concave-left')[0].style.display = 'flex';
-            }
+            markSelectedChat(li);
 
             selectChat(chat.id);
         }
+
         li.innerHTML = "<a> " +
-            "<img class=\"w-7 h-7 mr-6 rounded-full\" src=\"/images/alexander-hipp-iEEBWgY_6lA-unsplash.jpg\" alt=\"User image\">" +
-            "<div><p class=\"chat-name\">" + json.chat_names_list[chat.id] + "</p>" +
-            "<p class=\"chat-last-message\" id=\"chat-last-message\">" + json.chats_last_message_list[chat.id] + "</p></div>" +
+                "<img class=\"w-7 h-7 mr-6 rounded-full\" src=\"/images/alexander-hipp-iEEBWgY_6lA-unsplash.jpg\" alt=\"User image\">" +
+                "<div>" +
+                    "<p class=\"chat-name\">" + json.chat_names_list[chat.id] + "</p>" +
+                    "<p class=\"chat-last-message\" id=\"chat-last-message\">" + json.chats_last_message_list[chat.id] + "</p>" +
+                "</div>" +
             "</a>";
 
         li.className = "chat-item";
 
         if (chatOrder === 1) {
             li.classList.add('firstChat');
-        } else if (chatOrder === 2) {
-            li.classList.add('secondChat');
         } else {
             li.classList.add('nChat');
         }
 
-        if (json.current_chat_id == chat.id) {
-            li.classList.add('selected');
-
-            if (li.classList.contains('firstChat')) {
-                document.getElementsByClassName('concave-left')[0].style.display = 'none';
-                document.getElementById('messages').style.borderTopLeftRadius = '0';
-            } else {
-                document.getElementsByClassName('concave-left')[0].style.display = 'flex';
-            }
+        if (json.current_chat_id === chat.id) {
+            markSelectedChat(li);
         }
+
         chats.append(li);
     });
+}
+
+function markSelectedChat(li) {
+    li.classList.add('selected');
+
+    if (li.classList.contains('firstChat')) {
+        document.getElementById('concave-left').style.display = 'none';
+        document.getElementById('messages').style.borderTopLeftRadius = '0';
+    } else {
+        document.getElementById('concave-left').style.display = 'flex';
+    }
 }
 
 function getOrCreateNewChat(userId) {
@@ -199,6 +205,7 @@ function scrollToCurrentMessage() {
     chatMessages.scrollTop = chatMessages.scrollHeight - previousScrollHeight;
 }
 
+/* Events */
 
 window.addEventListener("DOMContentLoaded", (event) => {
     let chatMessages = document.getElementById('messages');
@@ -216,7 +223,6 @@ window.addEventListener("DOMContentLoaded", (event) => {
         }
     });
 
-    // Add an event listener to the textarea to check its value and enable/disable the send button accordingly
     textArea.addEventListener('input', function () {
         if (textArea.value.trim() !== '') {
             sendButton.removeAttribute('disabled');
