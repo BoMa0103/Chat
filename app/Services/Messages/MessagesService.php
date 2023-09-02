@@ -27,4 +27,14 @@ class MessagesService
     {
         return $this->messageRepository->getMessagesByChatIdOffsetLimit($chatId, $offset, $limit);
     }
+
+    public function setReadStatusMessages(int $chatId, int $userId)
+    {
+        return $this->messageRepository->setReadStatusMessages($chatId, $userId);
+    }
+
+    public function getUnreadMessagesCount(int $chatId, int $userId): int
+    {
+        return $this->messageRepository->getUnreadMessagesCount($chatId, $userId);
+    }
 }

@@ -3,6 +3,7 @@ const socket = new WebSocket("ws://localhost:8080");
 socket.onopen = function (e) {
     console.log('open');
     socket.send('{"message": "connection_identify", "user_id": "' + user_id + '"}');
+    socket.send('{"message": "load_data"}');
     socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
     console.log("[open] Connection successful");
 };
@@ -23,9 +24,17 @@ socket.onmessage = function (event) {
     } else if (json.message === 'load_chats') {
         loadChats(json);
     } else if (json.message === 'require_select_chat') {
-        requireSelectChat(json);
+        requireSelectChat();
     } else if (json.message === 'chat_selected') {
-        chatSelected(json);
+        chatSelected();
+    } else if (json.message === 'mark_messages_as_read') {
+        markMessagesAsRead();
+    } else if (json.message === 'showUnreadMessagesCount') {
+        showUnreadMessagesCount(json);
+    } else if (json.message === 'mark_chat_as_online') {
+        markChatAsOnline(json);
+    } else if (json.message === 'mark_chat_as_offline') {
+        markChatAsOffline(json);
     }
 };
 

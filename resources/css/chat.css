@@ -32,7 +32,6 @@
     background-color: hsl(var(--b1) / var(--tw-bg-opacity, 1));
     z-index: 1;
     color: #e5dfd3;
-
 }
 
 .concave-left {
@@ -116,7 +115,7 @@
 
 .message-time {
     font-size: 12px;
-    padding: 4px 12px;
+    padding: 4px 6px;
     border-radius: 5px;
     text-align: right;
     color: #4b5563;
@@ -231,6 +230,20 @@ textarea {
     }
 }
 
+.chat-info {
+    *::before,
+    *::after,
+    &::before,
+    &::after{
+        display: none;
+    }
+}
+
+.message-meta {
+    display: flex;
+    justify-content: flex-end;
+}
+
 .chat-item.selected.firstChat {
     z-index: -1;
 
@@ -259,6 +272,46 @@ textarea {
 
 .chat-item a {
     max-width: 100%;
+    display: flex;
+}
+
+.chat-info {
+    max-width: 100%;
+    display: flex;
+}
+
+.chat-unread-messages-count {
+    display: flex;
+    justify-content: center;
+    justify-items: center;
+    position: relative;
+    font-size: 14px;
+    margin-left: auto;
+    height: 22px;
+    align-items: center;
+    min-width: 22px;
+    width: fit-content;
+    color: #e5dfd3;
+    background-color: #2d3748;
+    border-radius: 100%;
+    margin-top: 3px;
+}
+
+.online-circle {
+    height: 14px;
+    width: 14px;
+    border-radius: 100%;
+    z-index: 10;
+    padding: 2px;
+    background-color: #0088cc;
+    margin-top: auto;
+    margin-left: -14px;
+    border: 2px solid hsl(var(--b1) / var(--tw-bg-opacity, 1));
+    display: none;
+}
+
+.selected .online-circle {
+    border: 2px solid #2d3748;
 }
 
 .online-users {
@@ -322,17 +375,20 @@ textarea {
     min-width: 300px;
 }
 
-.chat-item a {
-    display: flex;
-}
-
-.chat-item div {
+.chat-name-last-message {
     display: flex;
     flex-direction: column;
+    margin-left: 20px;
 }
 
 .chat-item a img {
     margin-right: 20px;
+    margin-top: -5px;
+    width: 40px;
+    height: 40px;
+}
+
+.chat-info img {
     margin-top: -5px;
     width: 40px;
     height: 40px;
@@ -350,7 +406,7 @@ textarea {
     overflow: hidden;
     white-space: nowrap; /* Prevent text from wrapping */
     text-overflow: ellipsis; /* Add ellipsis (...) at the end of the line */
-    max-width: 250px;
+    max-width: 200px;
 }
 
 .chat-item:last-child {
@@ -362,6 +418,11 @@ textarea {
     background-color: #4b5563;
     transition: background-color 0.4s ease;
     border-radius: 40px;
+}
+
+.chat-item:hover .online-circle{
+    border-color: #4b5563;
+    transition: border-color 0.4s ease;
 }
 
 .chat-messages {

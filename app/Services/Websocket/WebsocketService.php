@@ -40,16 +40,22 @@ class WebsocketService implements MessageComponentInterface
             $this->requireMessagesHistory($from, $msg);
         } else if ($msg->message == 'connection_identify') {
             $this->connectionIdentify($from, $msg);
+        } else if ($msg->message == 'load_data') {
+            $this->loadData($from);
         } else if ($msg->message == 'new_chat') {
             $this->tryToCreateNewChatOrSelectExistent($from, $msg);
         } else if ($msg->message == 'select_chat') {
             $this->selectChat($from, $msg->chat_id);
+        } else if ($msg->message == 'mark_messages_as_read') {
+            $this->markMessagesAsRead($from, $msg->chat_id);
         }
     }
 
     public function onClose(ConnectionInterface $conn)
     {
         $this->clients->detach($conn);
+
+        $this->sendMarkUserChatAsOffline($conn);
 
         unset($this->connectedUsersId[$conn->resourceId]);
 
@@ -102,6 +108,7 @@ class WebsocketService implements MessageComponentInterface
             'value' => $msg->value,
             'user' => $user,
             'time' => $msg->time,
+            'read_status' => 0,
         ];
 
         $changeLastMessage = [
@@ -109,16 +116,6 @@ class WebsocketService implements MessageComponentInterface
             'value' => $msg->value,
             'user' => $user,
         ];
-
-        foreach ($this->clients as $client) {
-            $clientUserId = $this->connectedUsersId [$client->resourceId];
-            if ($clientUserId == $userReceiverId) {
-                if ($this->getWebsocketRepository()->findChatIdByUserId($clientUserId) == $chatId) {
-                    $client->send(json_encode($message));
-                    $client->send(json_encode($changeLastMessage));
-                }
-            }
-        }
 
         $from->send(json_encode($message));
         $from->send(json_encode($changeLastMessage));
@@ -128,6 +125,30 @@ class WebsocketService implements MessageComponentInterface
             'user_id' => $userId,
             'chat_id' => $chatId,
         ]);
+
+        foreach ($this->clients as $client) {
+            $clientUserId = $this->connectedUsersId [$client->resourceId];
+            if ($clientUserId == $userReceiverId) {
+                if ($this->getWebsocketRepository()->findChatIdByUserId($clientUserId) == $chatId) {
+                    $client->send(json_encode($message));
+                    $client->send(json_encode($changeLastMessage));
+
+                    $this->getMessagesService()->setReadStatusMessages($chatId, $clientUserId);
+
+                    $messageRead = [
+                        'message' => 'mark_messages_as_read',
+                    ];
+                    $from->send(json_encode($messageRead));
+                } else {
+                    $unreadMessagesCount = [
+                        'message' => 'showUnreadMessagesCount',
+                        'chat_id' => $chatId,
+                        'unread_messages_count' => $this->getMessagesService()->getUnreadMessagesCount($chatId, $clientUserId),
+                    ];
+                    $client->send(json_encode($unreadMessagesCount));
+                }
+            }
+        }
     }
 
     private function messageValidate($msg)
@@ -155,6 +176,7 @@ class WebsocketService implements MessageComponentInterface
                 'value' => $message->value,
                 'user' => $message->user,
                 'time' => $message->created_at->format('H:i'),
+                'read_status' => $message->read_status,
             ];
             $from->send(json_encode($data));
         }
@@ -171,12 +193,17 @@ class WebsocketService implements MessageComponentInterface
     private function connectionIdentify(ConnectionInterface $from, $msg)
     {
         $this->connectedUsersId [$from->resourceId] = $msg->user_id;
+    }
 
+    private function loadData(ConnectionInterface $from)
+    {
         $this->loadChats($from);
 
         $this->sendUsersOnlineCount();
 
         $this->sendUsersOnlineList();
+
+        $this->sendMarkUserChatAsOnline($from);
     }
 
     private function loadChats(ConnectionInterface $from)
@@ -187,10 +214,12 @@ class WebsocketService implements MessageComponentInterface
 
         $chatsNameList = [];
         $chatsLastMessageList = [];
+        $chatsUnreadMessagesCountList = [];
 
         foreach ($chats as $chat) {
 
             $chatsLastMessageList [$chat->id] = $this->getMessagesService()->getMessagesByChatIdOffsetLimit($chat->id, 0, 1)->first();
+
             if (!$chatsLastMessageList [$chat->id]) {
                 $chatsLastMessageList [$chat->id] = '';
             } else {
@@ -201,8 +230,10 @@ class WebsocketService implements MessageComponentInterface
                 $chatsNameList [$chat->id] = $this->getUsersService()->find($chat->user_id_second)->name;
             } else {
                 $chatsNameList [$chat->id] = $this->getUsersService()->find($chat->user_id_first)->name;
-
             }
+
+            $chatsUnreadMessagesCountList [$chat->id] = $this->getMessagesService()->getUnreadMessagesCount($chat->id, $userId);
+
         }
 
         $currentChatId = $this->getWebsocketRepository()->findChatIdByUserId($userId);
@@ -216,6 +247,7 @@ class WebsocketService implements MessageComponentInterface
             'value' => $chats,
             'chat_names_list' => $chatsNameList,
             'chats_last_message_list' => $chatsLastMessageList,
+            'chats_unread_messages_count_list' => $chatsUnreadMessagesCountList,
             'current_chat_id' => $currentChatId,
         ];
 
@@ -253,6 +285,54 @@ class WebsocketService implements MessageComponentInterface
         }
     }
 
+    private function sendMarkUserChatAsOnline(ConnectionInterface $from)
+    {
+        $userId = $this->connectedUsersId [$from->resourceId];
+
+        $chats = $this->getUsersService()->find($userId)->chats()->get();
+
+        foreach ($chats as $chat) {
+            $userReceiverId = $chat->user_id_first == $userId ? $chat->user_id_second : $chat->user_id_first;
+            foreach ($this->clients as $client) {
+                $clientUserId = $this->connectedUsersId [$client->resourceId];
+
+                if ($clientUserId == $userReceiverId) {
+
+                    $message = [
+                        'message' => 'mark_chat_as_online',
+                        'chat_id' => $chat->id,
+                    ];
+
+                    $client->send(json_encode($message));
+                    $from->send(json_encode($message));
+                }
+            }
+        }
+    }
+
+    private function sendMarkUserChatAsOffline(ConnectionInterface $from)
+    {
+        $userId = $this->connectedUsersId [$from->resourceId];
+
+        $chats = $this->getUsersService()->find($userId)->chats()->get();
+
+        foreach ($chats as $chat) {
+            $userReceiverId = $chat->user_id_first == $userId ? $chat->user_id_second : $chat->user_id_first;
+            foreach ($this->clients as $client) {
+                $clientUserId = $this->connectedUsersId [$client->resourceId];
+
+                if ($clientUserId == $userReceiverId) {
+                    $message = [
+                        'message' => 'mark_chat_as_offline',
+                        'chat_id' => $chat->id,
+                    ];
+
+                    $client->send(json_encode($message));
+                }
+            }
+        }
+    }
+
     private function tryToCreateNewChatOrSelectExistent(ConnectionInterface $from, $msg)
     {
         $userId = $this->connectedUsersId [$from->resourceId];
@@ -286,6 +366,7 @@ class WebsocketService implements MessageComponentInterface
 
                 foreach ($this->clients as $client) {
                     if ($client->resourceId == $key) {
+                        // redo to upload only one chat
                         $this->loadChats($client);
                         break;
                     }
@@ -303,6 +384,35 @@ class WebsocketService implements MessageComponentInterface
         $message = [
             'message' => 'chat_selected',
         ];
+
         $from->send(json_encode($message));
+    }
+
+    private function markMessagesAsRead(ConnectionInterface $from, int $chatId) {
+        $userId = $this->connectedUsersId [$from->resourceId];
+
+        $this->getMessagesService()->setReadStatusMessages($chatId, $userId);
+
+        $chat = $this->getChatsService()->find($chatId);
+
+        $userReceiverId = $chat->user_id_first == $userId ? $chat->user_id_second : $chat->user_id_first;
+
+        foreach ($this->connectedUsersId as $key => $userId) {
+            if ($userId == $userReceiverId) {
+
+                foreach ($this->clients as $client) {
+                    if ($client->resourceId == $key) {
+                        $message = [
+                            'message' => 'mark_messages_as_read',
+                        ];
+                        $client->send(json_encode($message));
+
+                        break;
+                    }
+                }
+
+            }
+        }
+
     }
 }
