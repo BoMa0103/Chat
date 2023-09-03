@@ -1,5 +1,6 @@
 const DEFAULT_MESSAGES_COUNT_LOAD = 20;
-let load_messages_count = 0;
+
+let loadMessagesCount = 0;
 let previousScrollHeight = 0;
 
 function sendMessage() {
@@ -47,9 +48,9 @@ function showMessagesHistory(json) {
 
     messages.prepend(div);
 
-    load_messages_count++;
+    loadMessagesCount++;
 
-    if (load_messages_count === DEFAULT_MESSAGES_COUNT_LOAD) {
+    if (loadMessagesCount === DEFAULT_MESSAGES_COUNT_LOAD) {
         scrollToBottom();
     } else {
         scrollToCurrentMessage();
@@ -249,9 +250,9 @@ function selectChat(chatId) {
 
     document.getElementById('messages').innerText = '';
 
-    load_messages_count = 0;
+    loadMessagesCount = 0;
 
-    socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
+    socket.send('{"message": "require_messages_history", "load_messages_count": "' + loadMessagesCount + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
     socket.send('{"message": "mark_messages_as_read", "chat_id": "' + chatId + '"}');
 
     clearUnreadMessagesCount(chatId);
@@ -271,13 +272,15 @@ function selectChatFromOnlineUsers(json) {
 
     document.getElementById('messages').innerText = '';
 
-    load_messages_count = 0;
+    loadMessagesCount = 0;
 
-    socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
+    socket.send('{"message": "require_messages_history", "load_messages_count": "' + loadMessagesCount + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
     socket.send('{"message": "mark_messages_as_read", "chat_id": "' + json.chat_id + '"}');
 
     clearUnreadMessagesCount(json.chat_id);
 }
+
+
 
 function getCurrentTime() {
     const currentDate = new Date();
@@ -290,6 +293,8 @@ function getCurrentTime() {
 
     return `${formattedHours}:${formattedMinutes}`;
 }
+
+/* Scroll */
 
 function scrollToBottom() {
     let chatMessages = document.getElementById('messages');
@@ -315,9 +320,9 @@ window.addEventListener("DOMContentLoaded", (event) => {
         const scrollHeight = chatMessages.scrollHeight;
 
 
-        if (scrollTop === 0 && load_messages_count !== 0) {
+        if (scrollTop === 0 && loadMessagesCount !== 0) {
             previousScrollHeight = scrollHeight;
-            socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
+            socket.send('{"message": "require_messages_history", "load_messages_count": "' + loadMessagesCount + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
         }
     });
 

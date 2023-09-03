@@ -2,44 +2,13 @@
 
 namespace App\Services\Websocket\Handlers;
 
-use App\Services\Chats\ChatsService;
-use App\Services\Messages\MessagesService;
-use App\Services\Websocket\WebsocketService;
 use Ratchet\ConnectionInterface;
 
-class MarkMessagesAsReadHandler
+class MarkMessagesAsReadHandler extends BaseHandler
 {
-    private $clients;
-    private $connectedUsersId;
-
-    public function __construct()
+    public function handle(ConnectionInterface $from, int $chatId): void
     {
-        $this->clients = $this->getWebsocketService()->getClients();
-        $this->connectedUsersId = $this->getWebsocketService()->getConnectedUsersId();
-    }
-
-    private function getWebsocketService(): WebsocketService
-    {
-        return app(WebsocketService::class);
-    }
-
-    private function getChatsService(): ChatsService
-    {
-        return app(ChatsService::class);
-    }
-
-    private function getMessagesService(): MessagesService
-    {
-        return app(MessagesService::class);
-    }
-
-    public function handle(ConnectionInterface $from, $msg)
-    {
-        $this->connectedUsersId = $this->getWebsocketService()->getConnectedUsersId();
-        $this->clients = $this->getWebsocketService()->getClients();
-
         $userId = $this->connectedUsersId [$from->resourceId];
-        $chatId = $msg->chat_id;
 
         $this->getMessagesService()->setReadStatusMessages($chatId, $userId);
 

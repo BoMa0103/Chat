@@ -79,10 +79,10 @@ class WebsocketService implements MessageComponentInterface
                 $this->getSelectOrCreateChatHandler()->handle($from, $msg);
                 break;
             case 'select_chat':
-                $this->getSelectChatHandler()->handle($from, $msg);
+                $this->getSelectChatHandler()->handle($from, $msg->chat_id);
                 break;
             case 'mark_messages_as_read':
-                $this->getMarkMessagesAsReadHandler()->handle($from, $msg);
+                $this->getMarkMessagesAsReadHandler()->handle($from, $msg->chat_id);
                 break;
         }
     }

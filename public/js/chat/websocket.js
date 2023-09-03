@@ -2,9 +2,12 @@ const socket = new WebSocket("ws://localhost:8080");
 
 socket.onopen = function (e) {
     console.log('open');
+
     socket.send('{"message": "connection_identify", "user_id": "' + user_id + '"}');
+
     socket.send('{"message": "load_data"}');
-    socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
+    socket.send('{"message": "require_messages_history", "load_messages_count": "' + loadMessagesCount + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
+
     console.log("[open] Connection successful");
 };
 

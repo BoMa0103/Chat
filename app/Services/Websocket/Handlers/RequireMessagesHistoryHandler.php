@@ -2,30 +2,11 @@
 
 namespace App\Services\Websocket\Handlers;
 
-use App\Services\Messages\MessagesService;
-use App\Services\Websocket\WebsocketService;
 use Ratchet\ConnectionInterface;
 
-class RequireMessagesHistoryHandler
+class RequireMessagesHistoryHandler extends BaseHandler
 {
-    private $connectedUsersId;
-
-    public function __construct()
-    {
-        $this->connectedUsersId = $this->getWebsocketService()->getConnectedUsersId();
-    }
-
-    private function getWebsocketService(): WebsocketService
-    {
-        return app(WebsocketService::class);
-    }
-
-    private function getMessagesService(): MessagesService
-    {
-        return app(MessagesService::class);
-    }
-
-    public function handle(ConnectionInterface $from, $msg)
+    public function handle(ConnectionInterface $from, $msg): void
     {
         $userId = $this->connectedUsersId  [$from->resourceId];
         $chatId = $this->getWebsocketService()->findChatIdByUserId($userId);
@@ -49,7 +30,7 @@ class RequireMessagesHistoryHandler
         }
     }
 
-    private function showRequireSelectChatMessage(ConnectionInterface $from)
+    private function showRequireSelectChatMessage(ConnectionInterface $from): void
     {
         $message = [
             'message' => 'require_select_chat',

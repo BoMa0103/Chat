@@ -6,8 +6,6 @@ use Livewire\Component;
 
 class Chat extends Component
 {
-    public $message = '';
-
     public function render()
     {
         return view('livewire.chat', [

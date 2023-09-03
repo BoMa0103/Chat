@@ -11,8 +11,8 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,600&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
-        <script type="text/javascript" src="{{ URL::asset('js/websocket.js') }}"></script>
-        <script type="text/javascript" src="{{ URL::asset('js/chat.js') }}"></script>
+        <script type="text/javascript" src="{{ URL::asset('js/chat/websocket.js') }}"></script>
+        <script type="text/javascript" src="{{ URL::asset('js/chat/chat.js') }}"></script>
 
         <script>
             let user_id = "{{$user_id}}";

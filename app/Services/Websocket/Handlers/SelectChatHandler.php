@@ -2,27 +2,13 @@
 
 namespace App\Services\Websocket\Handlers;
 
-use App\Services\Websocket\WebsocketService;
 use Ratchet\ConnectionInterface;
 
-class SelectChatHandler
+class SelectChatHandler extends BaseHandler
 {
-    private $connectedUsersId;
-
-    public function __construct()
-    {
-        $this->connectedUsersId = $this->getWebsocketService()->getConnectedUsersId();
-    }
-
-    private function getWebsocketService(): WebsocketService
-    {
-        return app(WebsocketService::class);
-    }
-
-    public function handle(ConnectionInterface $from, $msg)
+    public function handle(ConnectionInterface $from, int $chatId): void
     {
         $userId = $this->connectedUsersId [$from->resourceId];
-        $chatId = $msg->chat_id;
 
         $this->getWebsocketService()->storeChatIdForUser($userId, $chatId);
 
