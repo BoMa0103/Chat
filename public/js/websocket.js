@@ -11,30 +11,46 @@ socket.onopen = function (e) {
 socket.onmessage = function (event) {
     let json = JSON.parse(event.data);
 
-    if (json.message === 'message') {
-        showNewMessage(json);
-    } else if (json.message === 'change_last_message') {
-        changeLastMessage(json);
-    } else if (json.message === 'load_history') {
-        showMessagesHistory(json);
-    } else if (json.message === 'online_users_count') {
-        showOnlineUsersCount(json);
-    } else if (json.message === 'online_users_list') {
-        showOnlineUsersList(json);
-    } else if (json.message === 'load_chats') {
-        loadChats(json);
-    } else if (json.message === 'require_select_chat') {
-        requireSelectChat();
-    } else if (json.message === 'chat_selected') {
-        chatSelected();
-    } else if (json.message === 'mark_messages_as_read') {
-        markMessagesAsRead();
-    } else if (json.message === 'showUnreadMessagesCount') {
-        showUnreadMessagesCount(json);
-    } else if (json.message === 'mark_chat_as_online') {
-        markChatAsOnline(json);
-    } else if (json.message === 'mark_chat_as_offline') {
-        markChatAsOffline(json);
+    switch (json.message) {
+        case 'message':
+            showNewMessage(json);
+            break;
+        case 'change_last_message':
+            changeLastMessage(json);
+            break;
+        case 'load_history':
+            showMessagesHistory(json);
+            break;
+        case 'online_users_count':
+            showOnlineUsersCount(json);
+            break;
+        case 'online_users_list':
+            showOnlineUsersList(json);
+            break;
+        case 'load_chats':
+            loadChats(json);
+            break;
+        case 'require_select_chat':
+            requireSelectChat();
+            break;
+        case 'select_chat':
+            selectChatFromOnlineUsers(json);
+            break;
+        case 'chat_selected':
+            chatSelected();
+            break;
+        case 'mark_messages_as_read':
+            markMessagesAsRead();
+            break;
+        case 'show_unread_messages_count':
+            showUnreadMessagesCount(json);
+            break;
+        case 'mark_chat_as_online':
+            markChatAsOnline(json);
+            break;
+        case 'mark_chat_as_offline':
+            markChatAsOffline(json);
+            break;
     }
 };
 

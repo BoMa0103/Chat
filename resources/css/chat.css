@@ -373,6 +373,7 @@ textarea {
     height: 50px;
     z-index: 5;
     min-width: 300px;
+    user-select: none;
 }
 
 .chat-name-last-message {

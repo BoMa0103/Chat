@@ -25,8 +25,9 @@ function markMessagesAsRead() {
 }
 
 function changeLastMessage(json) {
-    let selectedItem = document.getElementsByClassName('selected')[0];
-    selectedItem.getElementsByClassName('chat-last-message')[0].innerText = json.value;
+    let chat = document.getElementById(json.chat_id);
+
+    chat.getElementsByClassName('chat-last-message')[0].innerText = json.value;
 }
 
 function showNewMessage(json) {
@@ -53,19 +54,6 @@ function showMessagesHistory(json) {
     } else {
         scrollToCurrentMessage();
     }
-}
-
-function selectChat(chatId) {
-    socket.send('{"message": "select_chat", "chat_id": "' + chatId + '"}');
-
-    document.getElementById('messages').innerText = '';
-
-    load_messages_count = 0;
-
-    socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
-    socket.send('{"message": "mark_messages_as_read", "chat_id": "' + chatId + '"}');
-
-    clearUnreadMessagesCount(chatId);
 }
 
 function showMessage(json) {
@@ -255,14 +243,40 @@ function markChatAsOffline(json) {
 
     circleDiv.style.display = 'none';
 }
-function getOrCreateNewChat(userId) {
-    socket.send('{"message": "new_chat", "user_id": "' + userId + '"}');
+
+function selectChat(chatId) {
+    socket.send('{"message": "select_chat", "chat_id": "' + chatId + '"}');
 
     document.getElementById('messages').innerText = '';
 
     load_messages_count = 0;
 
     socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
+    socket.send('{"message": "mark_messages_as_read", "chat_id": "' + chatId + '"}');
+
+    clearUnreadMessagesCount(chatId);
+}
+
+function getOrCreateNewChat(userId) {
+    socket.send('{"message": "select_or_create_new_chat", "user_id": "' + userId + '"}');
+}
+
+function selectChatFromOnlineUsers(json) {
+    let selectedChat = document.getElementsByClassName('selected')[0];
+    selectedChat.classList.remove('selected');
+
+    let chat = document.getElementById(json.chat_id);
+
+    markSelectedChat(chat.parentNode.parentNode);
+
+    document.getElementById('messages').innerText = '';
+
+    load_messages_count = 0;
+
+    socket.send('{"message": "require_messages_history", "load_messages_count": "' + load_messages_count + '", "default_messages_count_load": "' + DEFAULT_MESSAGES_COUNT_LOAD + '"}');
+    socket.send('{"message": "mark_messages_as_read", "chat_id": "' + json.chat_id + '"}');
+
+    clearUnreadMessagesCount(json.chat_id);
 }
 
 function getCurrentTime() {
