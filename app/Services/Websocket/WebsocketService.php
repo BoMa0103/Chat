@@ -2,30 +2,58 @@
 
 namespace App\Services\Websocket;
 
-use App\Models\Chat;
-use App\Models\Message;
-use App\Models\User;
+use App\Services\Chats\ChatsService;
+use App\Services\Messages\MessagesService;
+use App\Services\Users\UsersService;
+use App\Services\Websocket\Handlers\CreateMessageHandler;
+use App\Services\Websocket\Handlers\MarkMessagesAsReadHandler;
+use App\Services\Websocket\Handlers\SelectChatHandler;
+use App\Services\Websocket\Handlers\SelectOrCreateChatHandler;
+use App\Services\Websocket\Handlers\LoadDataHandler;
+use App\Services\Websocket\Handlers\RequireMessagesHistoryHandler;
+use App\Services\Websocket\Repositories\WebsocketRepository;
 use Exception;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
 use PDOException;
-use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
+use Ratchet\MessageComponentInterface;
 use SplObjectStorage;
 
 class WebsocketService implements MessageComponentInterface
 {
-    protected $clients;
-    protected $uniqueUsersId = [];
+    protected static $clients;
+    protected static $connectedUsersId = [];
 
     public function __construct()
     {
-        $this->clients = new SplObjectStorage;
+        if (!self::$clients) {
+            self::$clients = new SplObjectStorage;
+        }
+    }
+
+    public function getClients(): SplObjectStorage
+    {
+        return self::$clients;
+    }
+
+    public function getConnectedUsersId(): array
+    {
+        return self::$connectedUsersId;
+    }
+
+    public function findChatIdByUserId(int $userId): ?int
+    {
+        return $this->getWebsocketRepository()->findChatIdByUserId($userId);
+    }
+
+    public function storeChatIdForUser(int $userId, int $chatId): int
+    {
+        return $this->getWebsocketRepository()->storeChatIdForUser($userId, $chatId);
     }
 
     public function onOpen(ConnectionInterface $conn)
     {
-        $this->clients->attach($conn);
+        self::$clients->attach($conn);
 
         echo "New connection! ({$conn->resourceId})\n";
     }
@@ -34,226 +62,38 @@ class WebsocketService implements MessageComponentInterface
     {
         $msg = $this->messageValidate($msg);
 
-        if ($msg->message == 'new_message') {
-            $this->newMessage($from, $msg);
-        } else if ($msg->message == 'require_messages_history') {
-            $this->requireMessagesHistory($from, $msg);
-        } else if ($msg->message == 'connection_identify') {
-            $this->connectionIdentify($from, $msg);
-        } else if ($msg->message == 'new_chat') {
-            $this->newChat($from, $msg);
-        } else if ($msg->message == 'select_chat') {
-            $this->selectChat($from, $msg->chat_id);
+        switch ($msg->message) {
+            case 'new_message':
+                $this->getCreateMessageHandler()->handle($from, $msg);
+                break;
+            case 'require_messages_history':
+                $this->getRequireMessagesHistoryHandler()->handle($from, $msg);
+                break;
+            case 'connection_identify':
+                $this->connectionIdentify($from, $msg);
+                break;
+            case 'load_data':
+                $this->getLoadDataHandler()->handle($from);
+                break;
+            case 'select_or_create_new_chat':
+                $this->getSelectOrCreateChatHandler()->handle($from, $msg);
+                break;
+            case 'select_chat':
+                $this->getSelectChatHandler()->handle($from, $msg->chat_id);
+                break;
+            case 'mark_messages_as_read':
+                $this->getMarkMessagesAsReadHandler()->handle($from, $msg->chat_id);
+                break;
         }
-    }
-
-    private function messageValidate($msg)
-    {
-        $msg = preg_replace("/[\r\n]+/", "<br>", $msg);
-
-        return json_decode($msg);
-    }
-
-    private function newMessage(ConnectionInterface $from, $msg)
-    {
-        $user = User::findOrFail($msg->user_id);
-        $chatId = Redis::get($this->uniqueUsersId [$from->resourceId]);
-
-        $chat = Chat::findOrFail($chatId);
-
-        $userReceiverId = $user->id == $chat->user_id_first ? $chat->user_id_second : $chat->user_id_first;
-
-        $message = [
-            'message' => 'message',
-            'value' => $msg->value,
-            'user' => $user,
-            'time' => $msg->time,
-        ];
-
-        foreach ($this->clients as $client) {
-            if ($this->uniqueUsersId [$client->resourceId] == $userReceiverId) {
-                if (Redis::get($this->uniqueUsersId [$client->resourceId]) == $chatId) {
-                    $client->send(json_encode($message));
-                }
-            }
-        }
-
-        $from->send(json_encode($message));
-
-        Message::create([
-            'value' => $msg->value,
-            'user_id' => $msg->user_id,
-            'chat_id' => Redis::get($this->uniqueUsersId [$from->resourceId]),
-        ]);
-    }
-
-    private function requireMessagesHistory(ConnectionInterface $from, $msg)
-    {
-        $chatId = Redis::get($this->uniqueUsersId [$from->resourceId]);
-
-        $messages = Message::select('*')
-            ->where('chat_id', '=', $chatId)
-            ->orderBy('id', 'desc')
-            ->offset($msg->load_messages_count)
-            ->limit($msg->default_messages_count_load)
-            ->get();
-
-        foreach ($messages as $message) {
-            $data = [
-                'message' => 'load_history',
-                'value' => $message->value,
-                'user' => $message->user,
-                'time' => $message->created_at->format('H:i'),
-            ];
-            $from->send(json_encode($data));
-        }
-    }
-
-    private function connectionIdentify(ConnectionInterface $from, $msg)
-    {
-        $this->uniqueUsersId [$from->resourceId] = $msg->user_id;
-
-        $this->checkUserHasSelectedChat($from);
-
-        $this->loadChats($from);
-
-        $this->sendUsersOnlineCount();
-
-        $this->sendUsersOnlineList();
-    }
-
-    private function checkUserHasSelectedChat(ConnectionInterface $from)
-    {
-        $chatId = Redis::get($this->uniqueUsersId [$from->resourceId]);
-
-        if (!$chatId) {
-            $this->showRequireSelectChatMessage($from);
-        }
-    }
-
-    private function showRequireSelectChatMessage(ConnectionInterface $from)
-    {
-        $message = [
-            'message' => 'require_select_chat',
-        ];
-        $from->send(json_encode($message));
-    }
-
-    private function loadChats(ConnectionInterface $from)
-    {
-        $userId = $this->uniqueUsersId [$from->resourceId];
-
-        $chats = Chat::select("*")
-            ->where('user_id_first', '=', $userId)
-            ->orWhere('user_id_second', '=', $userId)
-            ->get();
-
-        $chat_list = [];
-
-        foreach ($chats as $chat) {
-            if ($chat->user_id_first == $userId) {
-                $chat_list [$chat->id] = User::select('name')
-                    ->where('id', '=', $chat->user_id_second)
-                    ->first()->name;
-            } else {
-                $chat_list [$chat->id] = User::select('name')
-                    ->where('id', '=', $chat->user_id_first)
-                    ->first()->name;
-            }
-        }
-
-        $message_chats = [
-            'message' => 'load_chats',
-            'value' => $chats,
-            'chat_names_list' => $chat_list,
-        ];
-
-        $from->send(json_encode($message_chats));
-    }
-
-    private function sendUsersOnlineCount()
-    {
-        $message_online = [
-            'message' => 'online_users_count',
-            'value' => count(array_unique($this->uniqueUsersId)),
-        ];
-
-        foreach ($this->clients as $client) {
-            $client->send(json_encode($message_online));
-        }
-    }
-
-    private function sendUsersOnlineList()
-    {
-        $users = [];
-
-        foreach (array_unique($this->uniqueUsersId) as $userId) {
-            $users [] = User::findOrFail($userId);
-        }
-
-        $message_users = [
-            'message' => 'online_users_list',
-            'value' => $users,
-        ];
-
-        foreach ($this->clients as $client) {
-            $client->send(json_encode($message_users));
-        }
-    }
-
-    private function newChat(ConnectionInterface $from, $msg)
-    {
-        try {
-            Chat::create([
-                'user_id_first' => $this->uniqueUsersId [$from->resourceId],
-                'user_id_second' => $msg->user_id,
-            ]);
-            $this->loadChats($from);
-            foreach ($this->uniqueUsersId as $key => $userId) {
-                if ($userId == $msg->user_id) {
-                    foreach ($this->clients as $client) {
-                        if ($client->resourceId == $key) {
-                            $this->loadChats($client);
-                            break;
-                        }
-                    }
-                    break;
-                }
-            }
-        } catch (PDOException $e) {
-            if ($e->getCode() == '45000') {
-                $chat = Chat::select('*')
-                    ->where(function ($query) use ($from, $msg) {
-                        $query->where('user_id_first', '=', $this->uniqueUsersId[$from->resourceId])
-                            ->where('user_id_second', '=', $msg->user_id);
-                    })
-                    ->orWhere(function ($query) use ($from, $msg) {
-                        $query->where('user_id_first', '=', $msg->user_id)
-                            ->where('user_id_second', '=', $this->uniqueUsersId[$from->resourceId]);
-                    })
-                    ->first();
-                $this->selectChat($from, $chat->id);
-            } else {
-                Log::error($e);
-            }
-        }
-    }
-
-    private function selectChat(ConnectionInterface $from, int $chatId)
-    {
-        Redis::set($this->uniqueUsersId [$from->resourceId], $chatId);
-        $message = [
-            'message' => 'chat_selected',
-        ];
-        $from->send(json_encode($message));
     }
 
     public function onClose(ConnectionInterface $conn)
     {
-        // The connection is closed, remove it, as we can no longer send it messages
-        $this->clients->detach($conn);
+        self::$clients->detach($conn);
 
-        unset($this->uniqueUsersId[$conn->resourceId]);
+        $this->sendMarkUserChatAsOffline($conn);
+
+        unset(self::$connectedUsersId[$conn->resourceId]);
 
         $this->sendUsersOnlineCount();
 
@@ -267,5 +107,110 @@ class WebsocketService implements MessageComponentInterface
         echo "An error has occurred: {$e->getMessage()}\n";
 
         $conn->close();
+    }
+
+    private function getCreateMessageHandler(): CreateMessageHandler
+    {
+        return app(CreateMessageHandler::class);
+    }
+
+    private function getRequireMessagesHistoryHandler(): RequireMessagesHistoryHandler
+    {
+        return app(RequireMessagesHistoryHandler::class);
+    }
+
+    private function getLoadDataHandler(): LoadDataHandler
+    {
+        return app(LoadDataHandler::class);
+    }
+
+    private function getSelectOrCreateChatHandler(): SelectOrCreateChatHandler
+    {
+        return app(SelectOrCreateChatHandler::class);
+    }
+
+    private function getSelectChatHandler(): SelectChatHandler
+    {
+        return app(SelectChatHandler::class);
+    }
+
+    private function getMarkMessagesAsReadHandler(): MarkMessagesAsReadHandler
+    {
+        return app(MarkMessagesAsReadHandler::class);
+    }
+
+    private function getUsersService(): UsersService
+    {
+        return app(UsersService::class);
+    }
+
+    private function getWebsocketRepository(): WebsocketRepository
+    {
+        return app(WebsocketRepository::class);
+    }
+
+    private function messageValidate($msg)
+    {
+        $msg = preg_replace("/[\r\n]+/", "<br>", $msg);
+
+        return json_decode($msg);
+    }
+
+    private function connectionIdentify(ConnectionInterface $from, $msg)
+    {
+        self::$connectedUsersId [$from->resourceId] = $msg->user_id;
+    }
+
+    private function sendUsersOnlineCount()
+    {
+        $message_online = [
+            'message' => 'online_users_count',
+            'value' => count(array_unique(self::$connectedUsersId)),
+        ];
+
+        foreach (self::$clients as $client) {
+            $client->send(json_encode($message_online));
+        }
+    }
+
+    private function sendUsersOnlineList()
+    {
+        $users = [];
+
+        foreach (array_unique(self::$connectedUsersId) as $userId) {
+            $users [] = $this->getUsersService()->find($userId);
+        }
+
+        $message_users = [
+            'message' => 'online_users_list',
+            'value' => $users,
+        ];
+
+        foreach (self::$clients as $client) {
+            $client->send(json_encode($message_users));
+        }
+    }
+
+    private function sendMarkUserChatAsOffline(ConnectionInterface $from)
+    {
+        $userId = self::$connectedUsersId [$from->resourceId];
+
+        $chats = $this->getUsersService()->find($userId)->chats()->get();
+
+        foreach ($chats as $chat) {
+            $userReceiverId = $chat->user_id_first == $userId ? $chat->user_id_second : $chat->user_id_first;
+            foreach (self::$clients as $client) {
+                $clientUserId = self::$connectedUsersId [$client->resourceId];
+
+                if ($clientUserId == $userReceiverId) {
+                    $message = [
+                        'message' => 'mark_chat_as_offline',
+                        'chat_id' => $chat->id,
+                    ];
+
+                    $client->send(json_encode($message));
+                }
+            }
+        }
     }
 }

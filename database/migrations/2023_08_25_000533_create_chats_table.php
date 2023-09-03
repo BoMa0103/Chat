@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('chats', function (Blueprint $table) {
@@ -41,9 +38,6 @@ return new class extends Migration {
         ');
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         DB::unprepared('DROP TRIGGER IF EXISTS unique_combination');
