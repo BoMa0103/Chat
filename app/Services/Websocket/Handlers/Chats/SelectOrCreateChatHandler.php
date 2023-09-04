@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Services\Websocket\Handlers;
+namespace App\Services\Websocket\Handlers\Chats;
 
+use App\Services\Websocket\Handlers\BaseHandler;
 use Illuminate\Support\Facades\Log;
 use PDOException;
 use Ratchet\ConnectionInterface;
@@ -13,6 +14,16 @@ class SelectOrCreateChatHandler extends BaseHandler
     private function getSelectChatHandler(): SelectChatHandler
     {
         return app(SelectChatHandler::class);
+    }
+
+    private function getMarkUserChatAsOnlineHandler(): MarkUserChatAsOnlineHandler
+    {
+        return app(MarkUserChatAsOnlineHandler::class);
+    }
+
+    private function getLoadChatsHandler(): LoadChatsHandler
+    {
+        return app(LoadChatsHandler::class);
     }
 
     public function handle(ConnectionInterface $from, $msg): void
@@ -45,16 +56,15 @@ class SelectOrCreateChatHandler extends BaseHandler
         }
 
         $this->getSelectChatHandler()->handle($from, $chat->id);
-
-        $this->loadChats($from);
+        $this->getLoadChatsHandler()->handle($from);
 
         foreach ($this->connectedUsersId as $key => $userId) {
             if ($userId == $msg->user_id) {
 
                 foreach ($this->clients as $client) {
                     if ($client->resourceId == $key) {
-                        $this->loadChats($client);
-                        $this->sendMarkUserChatAsOnline($client);
+                        $this->getLoadChatsHandler()->handle($client);
+                        $this->getMarkUserChatAsOnlineHandler()->handle($client);
                         break;
                     }
                 }

@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Services\Websocket\Handlers;
+namespace App\Services\Websocket\Handlers\Chats;
 
+use App\Services\Websocket\Handlers\BaseHandler;
 use Ratchet\ConnectionInterface;
 
 class SelectChatHandler extends BaseHandler
