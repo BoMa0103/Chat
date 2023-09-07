@@ -4,20 +4,24 @@ namespace App\Services\Websocket\Handlers\Chats;
 
 use App\Services\Websocket\Handlers\BaseHandler;
 use App\Services\Websocket\Handlers\Messages\MarkMessagesAsReadHandler;
+use Illuminate\Support\Str;
 use Ratchet\ConnectionInterface;
 
-class LoadChatsHandler extends BaseHandler
+class SearchChatsHandler extends BaseHandler
 {
     private function getMarkMessagesAsReadHandler(): MarkMessagesAsReadHandler
     {
         return app(MarkMessagesAsReadHandler::class);
     }
 
-    public function handle(ConnectionInterface $from): void
+    private function getMarkUserChatAsOnlineHandler(): MarkUserChatAsOnlineHandler
+    {
+        return app(MarkUserChatAsOnlineHandler::class);
+    }
+
+    public function handle(ConnectionInterface $from, $msg): void
     {
         $userId = $this->connectedUsersId [$from->resourceId];
-
-        $this->getWebsocketService()->expireChatIdForUser($userId);
 
         $chatsInfo = $this->getChatsInfo($from, $userId);
 
@@ -27,9 +31,21 @@ class LoadChatsHandler extends BaseHandler
             $this->showRequireSelectChatMessage($from);
         }
 
+        dump($chatsInfo);
+
+        $selectedChats = [];
+
+        foreach ($chatsInfo ['chat_names_list'] as $key => $chatName) {
+            if (Str::startsWith(strtolower($chatName), strtolower($msg->value))) {
+                $selectedChats [] = $chatsInfo ['chats']->find($key);
+            }
+        }
+
+        dump($selectedChats);
+
         $message_chats = [
             'message' => 'load_chats',
-            'value' => $chatsInfo ['chats'],
+            'value' => $selectedChats,
             'chat_names_list' => $chatsInfo ['chat_names_list'],
             'chats_last_message_list' => $chatsInfo ['chats_last_message_list'],
             'chats_unread_messages_count_list' => $chatsInfo ['chats_unread_messages_count_list'],
@@ -37,6 +53,8 @@ class LoadChatsHandler extends BaseHandler
         ];
 
         $from->send(json_encode($message_chats));
+
+        $this->getMarkUserChatAsOnlineHandler()->handle($from);
     }
 
     private function getChatsInfo(ConnectionInterface $from, int $userId): array

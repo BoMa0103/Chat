@@ -27,4 +27,9 @@ class ChatsService
     {
         return $this->chatRepository->findChatBetweenTwoUsers($userIdFirst, $userIdSecond);
     }
+
+    public function getChatsForUserByName(int $userId, string $name)
+    {
+
+    }
 }

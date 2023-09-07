@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" href="{!! asset('images/free-icon-chat-bubble-6068634.png') !!}"/>@yield('page-title')
 
         <title>Chat</title>
 
@@ -30,6 +31,20 @@
     @livewire("chat")
 
     @livewireScripts
+
+{{--    <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" style="z-index: 999; background-color: #005cbf; opacity: 0.5; margin: 10px;">--}}
+{{--        <div class="toast-header">--}}
+{{--            <img src="..." class="rounded mr-2" alt="...">--}}
+{{--            <strong class="mr-auto" style="color: whitesmoke">Bootstrap</strong>--}}
+{{--            <small>11 mins ago</small>--}}
+{{--            <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">--}}
+{{--                <span aria-hidden="true">&times;</span>--}}
+{{--            </button>--}}
+{{--        </div>--}}
+{{--        <div class="toast-body" style="color: whitesmoke">--}}
+{{--            Hello, world! This is a toast message.--}}
+{{--        </div>--}}
+{{--    </div>--}}
 
     </body>
 </html>

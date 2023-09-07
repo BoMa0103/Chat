@@ -20,7 +20,8 @@ return new class extends Migration {
                 ->cascadeOnUpdate();
             $table->timestamps();
         });
-        // Создание триггера для проверки уникальности комбинации ключей
+
+        // Creating a Trigger to Check the Uniqueness of a Key Combination
         DB::unprepared('
             CREATE TRIGGER unique_combination BEFORE INSERT ON chats
             FOR EACH ROW

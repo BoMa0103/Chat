@@ -5,6 +5,7 @@ let previousScrollHeight = 0;
 
 function sendMessage() {
     let text = document.getElementById('text');
+
     socket.send('{"message": "new_message", "value": "' + text.value + '", "time": "' + getCurrentTime() + '"}');
     text.value = '';
 
@@ -28,7 +29,15 @@ function markMessagesAsRead() {
 function changeLastMessage(json) {
     let chat = document.getElementById(json.chat_id);
 
+    if (!chat) {
+        return;
+    }
+
     chat.getElementsByClassName('chat-last-message')[0].innerText = json.value;
+}
+
+function clearHistory() {
+    document.getElementById('messages').innerText = '';
 }
 
 function showNewMessage(json) {
@@ -37,6 +46,10 @@ function showNewMessage(json) {
     let div = showMessage(json);
 
     messages.append(div);
+
+    if (document.visibilityState !== "visible") {
+        notifyMe(json);
+    }
 
     scrollToBottom();
 }
@@ -77,7 +90,7 @@ function showMessage(json) {
         }
 
         div.innerHTML =
-            "<div class=\"message-content\" id=\"message\">" + json.value + "</div>" +
+            "<div class=\"message-content\" id=\"message\"><pre>" + json.value + "</pre></div>" +
             "<div class=\"message-meta\">" +
                 "<div class=\"message-time\" id=\"time\">" + json.time + "</div>" +
                 svg +
@@ -87,7 +100,7 @@ function showMessage(json) {
 
         div.innerHTML =
             "<div class=\"message_user\">" + json.user.name + "</div>" +
-            "<div class=\"message-content\" id=\"message\">" + json.value + "</div>" +
+            "<div class=\"message-content\" id=\"message\"><pre>" + json.value + "</pre></div>" +
             "<div class=\"message-time\" id=\"time\">" + json.time + "</div>";
     }
 
@@ -117,6 +130,12 @@ function showOnlineUsersList(json) {
 
 function showUnreadMessagesCount(json) {
     let chat = document.getElementById(json.chat_id);
+
+    if (!chat) {
+        notifyMe(json);
+        return;
+    }
+
     let chatUnreadMessagesCount = chat.getElementsByClassName('chat-unread-messages-count')[0];
 
     if (!chatUnreadMessagesCount) {
@@ -127,6 +146,8 @@ function showUnreadMessagesCount(json) {
     } else {
         chatUnreadMessagesCount.innerText = json.unread_messages_count;
     }
+
+    notifyMe(json);
 }
 
 function clearUnreadMessagesCount(chatId) {
@@ -233,6 +254,11 @@ function markSelectedChat(li) {
 
 function markChatAsOnline(json) {
     let chat = document.getElementById(json.chat_id);
+
+    if (!chat) {
+        return;
+    }
+
     let circleDiv = chat.getElementsByClassName('online-circle')[0];
 
     circleDiv.style.display = 'block';
@@ -294,7 +320,9 @@ function getCurrentTime() {
     return `${formattedHours}:${formattedMinutes}`;
 }
 
+
 /* Scroll */
+
 
 function scrollToBottom() {
     let chatMessages = document.getElementById('messages');
@@ -308,12 +336,39 @@ function scrollToCurrentMessage() {
     chatMessages.scrollTop = chatMessages.scrollHeight - previousScrollHeight;
 }
 
+
+/* Notifications */
+
+
+function notifyMe(json) {
+    if (!("Notification" in window)) {
+        alert("This browser does not support desktop notification");
+    } else if (Notification.permission === "granted") {
+        const notification = new Notification("Chat", {
+            body: 'New message from ' + json.user.name,
+            icon: '/images/free-icon-chat-bubble-6068634.png',
+        });
+    } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then((permission) => {
+            if (permission === "granted") {
+                const notification = new Notification("Chat", {
+                    body: 'New message from ' + json.user.name,
+                    icon: '/images/free-icon-chat-bubble-6068634.png',
+                });
+            }
+        });
+    }
+}
+
+
 /* Events */
+
 
 window.addEventListener("DOMContentLoaded", (event) => {
     let chatMessages = document.getElementById('messages');
     let textArea = document.getElementById('text');
     let sendButton = document.getElementById('send');
+    let search = document.getElementById('default-search');
 
     chatMessages.addEventListener('scroll', function () {
         const scrollTop = chatMessages.scrollTop;
@@ -333,6 +388,14 @@ window.addEventListener("DOMContentLoaded", (event) => {
             sendButton.setAttribute('disabled', 'disabled');
         }
     });
+
+    search.addEventListener('input', function () {
+        if (search.value.trim() !== '') {
+            socket.send('{"message": "search_chats", "value": "' + search.value + '"}');
+        } else {
+            socket.send('{"message": "load_data"}');
+        }
+    })
 });
 
 

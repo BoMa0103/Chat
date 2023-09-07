@@ -3,6 +3,7 @@
 namespace App\Services\Websocket\Handlers\Chats;
 
 use App\Services\Websocket\Handlers\BaseHandler;
+use App\Services\Websocket\Handlers\Messages\RequireMessagesHistoryHandler;
 use Illuminate\Support\Facades\Log;
 use PDOException;
 use Ratchet\ConnectionInterface;
@@ -24,6 +25,11 @@ class SelectOrCreateChatHandler extends BaseHandler
     private function getLoadChatsHandler(): LoadChatsHandler
     {
         return app(LoadChatsHandler::class);
+    }
+
+    private function getRequireMessagesHistoryHandler(): RequireMessagesHistoryHandler
+    {
+        return app(RequireMessagesHistoryHandler::class);
     }
 
     public function handle(ConnectionInterface $from, $msg): void
@@ -57,6 +63,7 @@ class SelectOrCreateChatHandler extends BaseHandler
 
         $this->getSelectChatHandler()->handle($from, $chat->id);
         $this->getLoadChatsHandler()->handle($from);
+        $this->clearHistory($from);
 
         foreach ($this->connectedUsersId as $key => $userId) {
             if ($userId == $msg->user_id) {
@@ -71,5 +78,13 @@ class SelectOrCreateChatHandler extends BaseHandler
 
             }
         }
+    }
+
+    private function clearHistory(ConnectionInterface $from): void
+    {
+        $data = [
+            'message' => 'clear_history',
+        ];
+        $from->send(json_encode($data));
     }
 }
