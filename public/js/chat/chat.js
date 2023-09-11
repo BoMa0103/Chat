@@ -90,7 +90,7 @@ function showMessage(json) {
         }
 
         div.innerHTML =
-            "<div class=\"message-content\" id=\"message\"><pre>" + json.value + "</pre></div>" +
+            "<div class=\"message-content\" id=\"message\">" + json.value + "</div>" +
             "<div class=\"message-meta\">" +
                 "<div class=\"message-time\" id=\"time\">" + json.time + "</div>" +
                 svg +
@@ -100,7 +100,7 @@ function showMessage(json) {
 
         div.innerHTML =
             "<div class=\"message_user\">" + json.user.name + "</div>" +
-            "<div class=\"message-content\" id=\"message\"><pre>" + json.value + "</pre></div>" +
+            "<div class=\"message-content\" id=\"message\">" + json.value + "</div>" +
             "<div class=\"message-time\" id=\"time\">" + json.time + "</div>";
     }
 
@@ -395,7 +395,7 @@ window.addEventListener("DOMContentLoaded", (event) => {
         } else {
             socket.send('{"message": "load_data"}');
         }
-    })
+    });
 });
 
 

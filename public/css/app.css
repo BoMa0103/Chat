@@ -28,6 +28,7 @@
     background-color: #0088cc;
     color: #fff;
     padding: 10px;
+    padding-top: 12px;
     text-align: center;
     font-weight: bold;
 }
@@ -148,6 +149,7 @@ textarea {
     background-color: #0088cc;
     color: #fff;
     padding: 10px;
+    padding-top: 12px;
     text-align: center;
     font-weight: bold;
 }
@@ -221,4 +223,6 @@ textarea {
 .chat-messages::-webkit-scrollbar-thumb:hover {
     background-color: #aaa;
 }
+
+
 
