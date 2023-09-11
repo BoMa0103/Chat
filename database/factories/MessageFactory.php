@@ -19,8 +19,6 @@ class MessageFactory extends Factory
     {
         return [
             'value' => fake()->text(),
-            'user' => fake()->name(),
-            'time' => now(),
         ];
     }
 }

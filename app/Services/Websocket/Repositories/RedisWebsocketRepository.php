@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Redis;
 class RedisWebsocketRepository implements WebsocketRepository
 {
     const CHAT_ID_KEY = 'chat-id-';
+    const STORE_TIME = 60;
 
     public function findChatIdByUserId(int $userId): ?int
     {
@@ -15,8 +16,13 @@ class RedisWebsocketRepository implements WebsocketRepository
 
     public function storeChatIdForUser(int $userId, int $chatId): int
     {
-        $this->set(self::CHAT_ID_KEY . $userId, $chatId);
+        $this->setex(self::CHAT_ID_KEY . $userId, $chatId);
         return $chatId;
+    }
+
+    public function expireChatIdForUser(int $userId): void
+    {
+       $this->expire(self::CHAT_ID_KEY . $userId);
     }
 
     private function get(string $key): ?int
@@ -24,8 +30,13 @@ class RedisWebsocketRepository implements WebsocketRepository
         return Redis::get($key);
     }
 
-    private function set(string $key, string $data)
+    private function setex(string $key, string $data)
     {
-        Redis::set($key, $data);
+        Redis::setex($key, self::STORE_TIME, $data);
+    }
+
+    private function expire(string $key)
+    {
+        return Redis::expire($key, self::STORE_TIME);
     }
 }

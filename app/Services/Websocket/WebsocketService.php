@@ -2,27 +2,29 @@
 
 namespace App\Services\Websocket;
 
-use App\Services\Chats\ChatsService;
-use App\Services\Messages\MessagesService;
-use App\Services\Users\UsersService;
-use App\Services\Websocket\Handlers\CreateMessageHandler;
-use App\Services\Websocket\Handlers\MarkMessagesAsReadHandler;
-use App\Services\Websocket\Handlers\SelectChatHandler;
-use App\Services\Websocket\Handlers\SelectOrCreateChatHandler;
+use App\Services\Websocket\Handlers\Chats\SearchChatsHandler;
+use App\Services\Websocket\Handlers\Chats\SelectChatHandler;
+use App\Services\Websocket\Handlers\Chats\SelectOrCreateChatHandler;
 use App\Services\Websocket\Handlers\LoadDataHandler;
-use App\Services\Websocket\Handlers\RequireMessagesHistoryHandler;
+use App\Services\Websocket\Handlers\Messages\CreateMessageHandler;
+use App\Services\Websocket\Handlers\Messages\MarkMessagesAsReadHandler;
+use App\Services\Websocket\Handlers\Messages\MarkUserChatAsOfflineHandler;
+use App\Services\Websocket\Handlers\Messages\RequireMessagesHistoryHandler;
+use App\Services\Websocket\Handlers\Users\UpdateOnlineUsersDataHandler;
 use App\Services\Websocket\Repositories\WebsocketRepository;
+use App\Services\Websocket\Validators\MessageValidator;
 use Exception;
-use Illuminate\Support\Facades\Log;
-use PDOException;
 use Ratchet\ConnectionInterface;
 use Ratchet\MessageComponentInterface;
+use React\EventLoop\Loop;
 use SplObjectStorage;
 
 class WebsocketService implements MessageComponentInterface
 {
     protected static $clients;
     protected static $connectedUsersId = [];
+    protected static $loops = [];
+    protected static $timers = [];
 
     public function __construct()
     {
@@ -51,62 +53,78 @@ class WebsocketService implements MessageComponentInterface
         return $this->getWebsocketRepository()->storeChatIdForUser($userId, $chatId);
     }
 
-    public function onOpen(ConnectionInterface $conn)
+    public function expireChatIdForUser(int $userId): void
+    {
+        $this->getWebsocketRepository()->expireChatIdForUser($userId);
+    }
+
+    public function onOpen(ConnectionInterface $conn): void
     {
         self::$clients->attach($conn);
+
+        $this->startTimer($conn);
 
         echo "New connection! ({$conn->resourceId})\n";
     }
 
-    public function onMessage(ConnectionInterface $from, $msg)
+    public function onMessage(ConnectionInterface $from, $msg): void
     {
-        $msg = $this->messageValidate($msg);
+        $validatedMsg = $this->getMessageValidator()->validateJsonString($msg);
 
-        switch ($msg->message) {
+        switch ($validatedMsg->message) {
+            case 'connection_identify':
+                $this->connectionIdentify($from, $validatedMsg);
+                break;
             case 'new_message':
-                $this->getCreateMessageHandler()->handle($from, $msg);
+                $validatedMsg = $this->getMessageValidator()->validateMessage($msg);
+                $this->getCreateMessageHandler()->handle($from, $validatedMsg);
                 break;
             case 'require_messages_history':
-                $this->getRequireMessagesHistoryHandler()->handle($from, $msg);
-                break;
-            case 'connection_identify':
-                $this->connectionIdentify($from, $msg);
+                $this->getRequireMessagesHistoryHandler()->handle($from, $validatedMsg);
                 break;
             case 'load_data':
                 $this->getLoadDataHandler()->handle($from);
                 break;
             case 'select_or_create_new_chat':
-                $this->getSelectOrCreateChatHandler()->handle($from, $msg);
+                $this->getSelectOrCreateChatHandler()->handle($from, $validatedMsg);
                 break;
             case 'select_chat':
-                $this->getSelectChatHandler()->handle($from, $msg->chat_id);
+                $this->getSelectChatHandler()->handle($from, $validatedMsg->chat_id);
                 break;
             case 'mark_messages_as_read':
-                $this->getMarkMessagesAsReadHandler()->handle($from, $msg->chat_id);
+                $this->getMarkMessagesAsReadHandler()->handle($from, $validatedMsg->chat_id);
+                break;
+            case 'search_chats':
+                $this->getSearchChatsHandler()->handle($from, $validatedMsg);
                 break;
         }
     }
 
-    public function onClose(ConnectionInterface $conn)
+    public function onClose(ConnectionInterface $conn): void
     {
         self::$clients->detach($conn);
 
-        $this->sendMarkUserChatAsOffline($conn);
+        $this->getMarkUserChatAsOfflineHandler()->handle($conn);
+
+        $this->stopTimer($conn);
 
         unset(self::$connectedUsersId[$conn->resourceId]);
 
-        $this->sendUsersOnlineCount();
-
-        $this->sendUsersOnlineList();
+        $this->getUpdateOnlineUsersDataHandler()->handle();
 
         echo "Connection {$conn->resourceId} has disconnected\n";
     }
 
-    public function onError(ConnectionInterface $conn, Exception $e)
+    public function onError(ConnectionInterface $conn, Exception $e): void
     {
         echo "An error has occurred: {$e->getMessage()}\n";
 
         $conn->close();
+    }
+
+    private function getMessageValidator(): MessageValidator
+    {
+        return app(MessageValidator::class);
     }
 
     private function getCreateMessageHandler(): CreateMessageHandler
@@ -139,9 +157,14 @@ class WebsocketService implements MessageComponentInterface
         return app(MarkMessagesAsReadHandler::class);
     }
 
-    private function getUsersService(): UsersService
+    private function getMarkUserChatAsOfflineHandler(): MarkUserChatAsOfflineHandler
     {
-        return app(UsersService::class);
+        return app(MarkUserChatAsOfflineHandler::class);
+    }
+
+    private function getUpdateOnlineUsersDataHandler(): UpdateOnlineUsersDataHandler
+    {
+        return app(UpdateOnlineUsersDataHandler::class);
     }
 
     private function getWebsocketRepository(): WebsocketRepository
@@ -149,68 +172,37 @@ class WebsocketService implements MessageComponentInterface
         return app(WebsocketRepository::class);
     }
 
-    private function messageValidate($msg)
+    private function getSearchChatsHandler(): SearchChatsHandler
     {
-        $msg = preg_replace("/[\r\n]+/", "<br>", $msg);
-
-        return json_decode($msg);
+        return app(SearchChatsHandler::class);
     }
 
-    private function connectionIdentify(ConnectionInterface $from, $msg)
+    private function connectionIdentify(ConnectionInterface $from, $msg): void
     {
         self::$connectedUsersId [$from->resourceId] = $msg->user_id;
     }
 
-    private function sendUsersOnlineCount()
+    private function startTimer(ConnectionInterface $conn): void
     {
-        $message_online = [
-            'message' => 'online_users_count',
-            'value' => count(array_unique(self::$connectedUsersId)),
-        ];
+        $loop = Loop::get();
+        $resourceId = $conn->resourceId;
 
-        foreach (self::$clients as $client) {
-            $client->send(json_encode($message_online));
-        }
+        $timer = $loop->addPeriodicTimer(50, function () use ($conn, $resourceId) {
+            $this->getWebsocketRepository()->expireChatIdForUser(self::$connectedUsersId [$resourceId]);
+        });
+
+        self::$loops[$resourceId] = $loop;
+        self::$timers[$resourceId] = $timer;
     }
 
-    private function sendUsersOnlineList()
+    private function stopTimer(ConnectionInterface $conn): void
     {
-        $users = [];
-
-        foreach (array_unique(self::$connectedUsersId) as $userId) {
-            $users [] = $this->getUsersService()->find($userId);
-        }
-
-        $message_users = [
-            'message' => 'online_users_list',
-            'value' => $users,
-        ];
-
-        foreach (self::$clients as $client) {
-            $client->send(json_encode($message_users));
-        }
-    }
-
-    private function sendMarkUserChatAsOffline(ConnectionInterface $from)
-    {
-        $userId = self::$connectedUsersId [$from->resourceId];
-
-        $chats = $this->getUsersService()->find($userId)->chats()->get();
-
-        foreach ($chats as $chat) {
-            $userReceiverId = $chat->user_id_first == $userId ? $chat->user_id_second : $chat->user_id_first;
-            foreach (self::$clients as $client) {
-                $clientUserId = self::$connectedUsersId [$client->resourceId];
-
-                if ($clientUserId == $userReceiverId) {
-                    $message = [
-                        'message' => 'mark_chat_as_offline',
-                        'chat_id' => $chat->id,
-                    ];
-
-                    $client->send(json_encode($message));
-                }
-            }
+        $resourceId = $conn->resourceId;
+        if (isset(self::$loops[$resourceId])) {
+            $loop = self::$loops[$resourceId];
+            $loop->cancelTimer(self::$timers[$resourceId]);
+            unset(self::$loops[$resourceId]);
+            unset(self::$timers[$resourceId]);
         }
     }
 }

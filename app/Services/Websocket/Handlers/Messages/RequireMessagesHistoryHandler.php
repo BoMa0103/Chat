@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Services\Websocket\Handlers;
+namespace App\Services\Websocket\Handlers\Messages;
 
+use App\Services\Websocket\Handlers\BaseHandler;
 use Ratchet\ConnectionInterface;
 
 class RequireMessagesHistoryHandler extends BaseHandler

@@ -33,9 +33,14 @@ class Chat extends Model
 
     protected $guarded = [];
 
-    public function user(): BelongsTo
+    public function userFist(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id_first');
+    }
+
+    public function userSecond(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id_second');
     }
 
     public function messages(): HasMany

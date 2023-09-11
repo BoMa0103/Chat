@@ -54,6 +54,9 @@ socket.onmessage = function (event) {
         case 'mark_chat_as_offline':
             markChatAsOffline(json);
             break;
+        case 'clear_history':
+            clearHistory();
+            break;
     }
 };
 

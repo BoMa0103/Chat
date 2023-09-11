@@ -6,7 +6,6 @@ use App\Models\Chat;
 
 class EloquentChatRepository implements ChatRepository
 {
-
     public function find(int $id): ?Chat
     {
         return Chat::find($id);

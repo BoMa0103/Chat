@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Services\Websocket\Handlers;
+namespace App\Services\Websocket\Handlers\Messages;
 
+use App\Services\Websocket\Handlers\BaseHandler;
 use Ratchet\ConnectionInterface;
 
 class CreateMessageHandler extends BaseHandler
@@ -12,6 +13,7 @@ class CreateMessageHandler extends BaseHandler
         $user = $this->getUsersService()->find($userId);
 
         $chatId = $this->getWebsocketService()->findChatIdByUserId($userId);
+
         $chat = $this->getChatsService()->find($chatId);
 
         $userReceiverId = $user->id == $chat->user_id_first ? $chat->user_id_second : $chat->user_id_first;
@@ -59,6 +61,7 @@ class CreateMessageHandler extends BaseHandler
                     $unreadMessagesCount = [
                         'message' => 'show_unread_messages_count',
                         'chat_id' => $chatId,
+                        'user' => $user,
                         'unread_messages_count' => $this->getMessagesService()->getUnreadMessagesCount($chatId, $clientUserId),
                     ];
                     $client->send(json_encode($changeLastMessage));
